@@ -8,8 +8,8 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'WineBottleClub NFT - Connect with MetaMask',
-  description: 'View your NFT collection by connecting your MetaMask wallet',
-  manifest: "/site.webmanifest", // Link to the manifest file
+  description: 'Claim your WineBottleClub NFT and transfer it to Intercellar',
+  manifest: "/site.webmanifest", 
 };
 
 export default function RootLayout({
