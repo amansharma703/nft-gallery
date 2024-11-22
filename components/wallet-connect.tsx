@@ -10,6 +10,12 @@ interface WalletConnectProps {
   onConnect: (address: string) => void;
 }
 
+declare global {
+  interface Window {
+    ethereum: any;
+  }
+}
+
 export function WalletConnect({ onConnect }: WalletConnectProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [address, setAddress] = useState('');
