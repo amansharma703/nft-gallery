@@ -18,7 +18,7 @@ export default function Home() {
     setIsConnected(true);
     setLoading(true);
     try {
-      const nftsForOwner = await alchemy.nft.getNftsForOwner("0xbc5Ef4FB7b20e37C67372D129c7B5c0902ac6083", {
+      const nftsForOwner = await alchemy.nft.getNftsForOwner(address, {
         contractAddresses: [process.env.NEXT_PUBLIC_WINE_BOTTLE_NFT_ADDRESS!],
         orderBy : NftOrdering.TRANSFERTIME
       });
