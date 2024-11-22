@@ -5,9 +5,16 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Wallet2Icon } from 'lucide-react';
 import { ethers } from 'ethers';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 
 interface WalletConnectProps {
   onConnect: (address: string) => void;
+  onDisconnect: () => void;
 }
 
 declare global {
@@ -16,7 +23,7 @@ declare global {
   }
 }
 
-export function WalletConnect({ onConnect }: WalletConnectProps) {
+export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [address, setAddress] = useState('');
   const { toast } = useToast();
@@ -55,7 +62,7 @@ export function WalletConnect({ onConnect }: WalletConnectProps) {
       setIsConnected(true);
       setAddress(accounts[0]);
       onConnect(accounts[0]);
-      
+
       toast({
         title: 'Wallet Connected',
         description: 'Successfully connected to MetaMask',
@@ -70,16 +77,54 @@ export function WalletConnect({ onConnect }: WalletConnectProps) {
     }
   };
 
+  const disconnectWallet = () => {
+    setIsConnected(false);
+    setAddress('');
+    onDisconnect();
+    toast({
+      title: 'Wallet Disconnected',
+      description: 'You have successfully disconnected your wallet.',
+    });
+  };
+
   return (
-    <Button
-      onClick={connectWallet}
-      className="gap-2"
-      variant={isConnected ? "outline" : "default"}
-    >
-      <Wallet2Icon className="h-4 w-4" />
-      {isConnected
-        ? `${address.substring(0, 6)}...${address.substring(38)}`
-        : 'Connect Wallet'}
-    </Button>
+    <>
+      {
+        isConnected ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                className="gap-2"
+                variant={isConnected ? "outline" : "default"}
+              >
+                <Wallet2Icon className="h-4 w-4" />
+                {isConnected
+                  ? `${address.substring(0, 6)}...${address.substring(38)}`
+                  : 'Connect Wallet'}
+              </Button>
+            </DropdownMenuTrigger>
+            {isConnected && (
+              <DropdownMenuContent sideOffset={4}>
+                <DropdownMenuItem onClick={disconnectWallet}>
+                  Disconnect
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            )}
+          </DropdownMenu>
+        ) : (
+          <Button
+            onClick={isConnected ? disconnectWallet : connectWallet}
+            className="gap-2"
+            variant={isConnected ? "outline" : "default"}
+          >
+            <Wallet2Icon className="h-4 w-4" />
+            {isConnected
+              ? `${address.substring(0, 6)}...${address.substring(38)}`
+              : 'Connect Wallet'}
+          </Button>
+        )
+      }
+
+    </>
   );
 }

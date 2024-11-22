@@ -5,14 +5,15 @@ import Image from 'next/image';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OwnedNft } from 'alchemy-sdk';
-
+import Link from 'next/link';
 
 interface NFTGridProps {
   nfts: OwnedNft[];
   loading: boolean;
+  isConnected: boolean;
 }
 
-export function NFTGrid({ nfts, loading }: NFTGridProps) {
+export function NFTGrid({ nfts, loading, isConnected }: NFTGridProps) {
   const [imageError, setImageError] = useState<Record<string, boolean>>({});
 
   if (loading) {
@@ -33,12 +34,27 @@ export function NFTGrid({ nfts, loading }: NFTGridProps) {
     );
   }
 
+  if (!isConnected) {
+    return (
+      <div className="text-center py-12">
+        <h3 className="text-xl font-semibold mb-2">Connect your wallet</h3>
+        <p className="text-muted-foreground">
+          Connect your wallet to see all your Windbottle NFTs.
+        </p>
+      </div>
+    );
+  }
+
   if (nfts.length === 0) {
     return (
       <div className="text-center py-12">
         <h3 className="text-xl font-semibold mb-2">No NFTs Found</h3>
         <p className="text-muted-foreground">
-          We couldn&apos;t find any NFTs in this wallet.
+          We couldn&apos;t find any NFTs from the {" "}
+          <Link target='_blank' className='hover:underline hover:text-blue-500' href="https://opensea.io/collection/winebottleclub">
+            Wine Bottle Club
+          </Link> {" "}
+          in this wallet.
         </p>
       </div>
     );
@@ -67,13 +83,21 @@ export function NFTGrid({ nfts, loading }: NFTGridProps) {
           </CardHeader>
           <CardContent className="p-4">
             <CardTitle className="text-lg mb-2 truncate">
-              {nft.name || `NFT #${nft.tokenId}`}
+              <Link href={nft.raw.metadata.external_link || `https://opensea.io/assets/ethereum/${nft.contract.address}/${nft.tokenId}`} target="_blank" className="hover:underline hover:text-blue-500">
+                {nft.name || `NFT #${nft.tokenId}`}
+              </Link>
             </CardTitle>
             {nft.description && (
               <p className="text-sm text-muted-foreground line-clamp-2">
                 {nft.description}
               </p>
             )}
+            <p className="text-xs text-muted-foreground mt-2">
+              Collection: {nft.collection?.name || 'Unknown'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Contract: {nft.contract.address}
+            </p>
           </CardContent>
           <CardFooter className="p-4 pt-0">
             <p className="text-xs text-muted-foreground">
