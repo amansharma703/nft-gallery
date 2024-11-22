@@ -5,9 +5,10 @@ import { WalletConnect } from '@/components/wallet-connect';
 import { NFTGrid } from '@/components/nft-grid';
 import { alchemy } from '@/lib/alchemy';
 import { Wallet2Icon } from 'lucide-react';
+import { OwnedNft } from 'alchemy-sdk';
 
 export default function Home() {
-  const [nfts, setNfts] = useState([]);
+  const [nfts, setNfts] = useState<OwnedNft[]>([]);
   const [loading, setLoading] = useState(false);
 
   const handleConnect = async (address: string) => {

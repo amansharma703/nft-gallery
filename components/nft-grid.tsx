@@ -4,17 +4,11 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { OwnedNft } from 'alchemy-sdk';
 
-interface NFT {
-  title: string;
-  description: string;
-  media: Array<{ gateway: string }>;
-  tokenId: string;
-  contract: { address: string };
-}
 
 interface NFTGridProps {
-  nfts: NFT[];
+  nfts: OwnedNft[];
   loading: boolean;
 }
 
@@ -44,7 +38,7 @@ export function NFTGrid({ nfts, loading }: NFTGridProps) {
       <div className="text-center py-12">
         <h3 className="text-xl font-semibold mb-2">No NFTs Found</h3>
         <p className="text-muted-foreground">
-          We couldn't find any NFTs in this wallet.
+          We couldn&apos;t find any NFTs in this wallet.
         </p>
       </div>
     );
@@ -55,11 +49,11 @@ export function NFTGrid({ nfts, loading }: NFTGridProps) {
       {nfts.map((nft, index) => (
         <Card key={`${nft.contract.address}-${nft.tokenId}-${index}`} className="overflow-hidden">
           <CardHeader className="p-0">
-            {nft.media?.[0]?.gateway && !imageError[nft.tokenId] ? (
+            {nft.image?.cachedUrl && !imageError[nft.tokenId] ? (
               <div className="relative h-[300px] w-full">
                 <Image
-                  src={nft.media[0].gateway}
-                  alt={nft.title || 'NFT'}
+                  src={nft.image.cachedUrl}
+                  alt={nft.name || 'NFT'}
                   fill
                   className="object-cover"
                   onError={() => setImageError(prev => ({ ...prev, [nft.tokenId]: true }))}
@@ -73,7 +67,7 @@ export function NFTGrid({ nfts, loading }: NFTGridProps) {
           </CardHeader>
           <CardContent className="p-4">
             <CardTitle className="text-lg mb-2 truncate">
-              {nft.title || `NFT #${nft.tokenId}`}
+              {nft.name || `NFT #${nft.tokenId}`}
             </CardTitle>
             {nft.description && (
               <p className="text-sm text-muted-foreground line-clamp-2">
