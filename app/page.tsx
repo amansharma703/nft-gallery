@@ -43,9 +43,9 @@ export default function Home() {
         <div className="flex flex-col items-center mb-12 text-center">
           <div className="mb-8">
             <Image src="/logo.png" alt="Logo" width={64} height={64} className="mb-4" />
-            <h1 className="text-4xl font-bold mb-4">NFT Gallery</h1>
+            <h1 className="text-4xl font-bold mb-4">WineBottleClub NFT</h1>
             <p className="text-muted-foreground max-w-md mx-auto">
-              Connect your MetaMask wallet to view your NFT collection across all chains.
+              Claim your WineBottleClub NFT and transfer it to Intercellar
             </p>
           </div>
           <WalletConnect onConnect={handleConnect} onDisconnect={handleDisconnect} />

@@ -7,7 +7,7 @@ import { Toaster } from '@/components/ui/toaster';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'NFT Gallery - Connect with MetaMask',
+  title: 'WineBottleClub NFT - Connect with MetaMask',
   description: 'View your NFT collection by connecting your MetaMask wallet',
   manifest: "/site.webmanifest", // Link to the manifest file
 };

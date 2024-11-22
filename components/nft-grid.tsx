@@ -39,8 +39,7 @@ export function NFTGrid({ nfts, loading, isConnected }: NFTGridProps) {
       <div className="text-center py-12">
         <h3 className="text-xl font-semibold mb-2">Connect your wallet</h3>
         <p className="text-muted-foreground">
-          Connect your wallet to see all your
-          Wine Bottle Club NFTs.
+          Connect your wallet to see all your WineBottleClub NFTs.
         </p>
       </div>
     );
