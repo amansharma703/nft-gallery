@@ -52,7 +52,7 @@ export function NFTGrid({ nfts, loading, isConnected }: NFTGridProps) {
         <p className="text-muted-foreground">
           We couldn&apos;t find any NFTs from the {" "}
           <Link target='_blank' className='hover:underline hover:text-blue-500' href="https://opensea.io/collection/winebottleclub">
-            Wine Bottle Club
+            WineBottleClub
           </Link> {" "}
           in this wallet.
         </p>
