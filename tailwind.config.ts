@@ -9,15 +9,24 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        ramillas: ['var(--font-ramillas)', 'sans-serif'],
+      },
+      fontWeight: {
+        'ramillas-thin': '100',
+        'ramillas-ultralight': '200',
+        'ramillas-light': '300',
+        'ramillas-regular': '400',
+        'ramillas-medium': '500',
+        'ramillas-semibold': '600',
+        'ramillas-bold': '800',
+        'ramillas-extrabold': '900',
+        'ramillas-black': '900',
+      },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic':
           'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-      },
-      borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
       },
       colors: {
         background: 'hsl(var(--background))',
@@ -35,7 +44,7 @@ const config: Config = {
           foreground: 'hsl(var(--primary-foreground))',
         },
         secondary: {
-          DEFAULT: 'hsl(var(--secondary))',
+          DEFAULT: '#515978',
           foreground: 'hsl(var(--secondary-foreground))',
         },
         muted: {
