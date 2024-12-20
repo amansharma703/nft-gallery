@@ -17,11 +17,6 @@ interface WalletConnectProps {
   onDisconnect: () => void;
 }
 
-declare global {
-  interface Window {
-    ethereum: any;
-  }
-}
 
 export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
   const [isConnected, setIsConnected] = useState(false);
