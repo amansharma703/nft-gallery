@@ -110,6 +110,8 @@ export function StepperDialog({
     const handleConnect = async (address: string) => {
         setLoading(true);
         try {
+            console.log('Fetching NFTs for address:', address);
+            console.log('NFT Address:', process.env.NEXT_PUBLIC_WINE_BOTTLE_NFT_ADDRESS!);
             const nftsForOwner = await alchemy.nft.getNftsForOwner(address, {
                 contractAddresses: [process.env.NEXT_PUBLIC_WINE_BOTTLE_NFT_ADDRESS!],
                 orderBy: NftOrdering.TRANSFERTIME
@@ -171,7 +173,7 @@ export function StepperDialog({
         try {
             // Check if it's a valid Ethereum address format (Polygon uses the same format)
             const isValidFormat = ethers.utils.isAddress(address);
-            // You can add additional Polygon-specific checks here if needed
+                        // You can add additional Polygon-specific checks here if needed
             return isValidFormat;
         } catch {
             return false;
@@ -242,7 +244,40 @@ export function StepperDialog({
                     });
                     return;
                 }
-                setCurrentStep(step + 1);
+
+                fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/wbc/check_intercellar_address/`, 
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            address: formData.walletPolygon,
+                        }),
+                    }
+                )
+                .then(async (response) => {
+                    const data = await response.json();
+                    if (data.status=='error'){
+                        toast({
+                            variant: "destructive",
+                            title: "Error",
+                            description: data.message,
+                        });
+                        return;
+                    }
+                    else if (data.status=='success'){
+                        setCurrentStep(step + 1);
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    toast({
+                        variant: "destructive",
+                        title: "Error",
+                        description: "Failed to check Polygon address. Please try again.",
+                    });
+                });
                 break;
             default:
                 setCurrentStep(step + 1);
@@ -275,7 +310,7 @@ export function StepperDialog({
         setFormData(prev => ({ ...prev, walletPolygon: address }));
         
         if (address && !isValidPolygonAddress(address)) {
-            setPolygonAddressError('Please enter a valid Polygon wallet address');
+            setPolygonAddressError('Please enter a valid Intercellar wallet address');
         } else {
             setPolygonAddressError('');
         }
