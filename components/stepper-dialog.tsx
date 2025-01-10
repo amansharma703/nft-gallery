@@ -11,7 +11,11 @@ import {
 import { cn } from '@/lib/utils';
 import StepperIcon from './ui/icons/stepper';
 import { Button } from './ui/button';
-import { NftOrdering, OwnedNft } from 'alchemy-sdk';
+import { NftOrdering, OwnedNft as AlchemyOwnedNft } from 'alchemy-sdk';
+
+interface OwnedNft extends AlchemyOwnedNft {
+    redeemed?: boolean;
+}
 import { alchemy } from '@/lib/alchemy';
 import { ethers } from 'ethers';
 import { useToast } from "@/components/ui/use-toast";
@@ -67,6 +71,7 @@ export function StepperDialog({
 }) {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
+    const [isICvalid, setIsICvalid] = useState(false);
     const [nfts, setNfts] = useState<OwnedNft[]>([
     ]);
 
@@ -110,13 +115,40 @@ export function StepperDialog({
     const handleConnect = async (address: string) => {
         setLoading(true);
         try {
-            console.log('Fetching NFTs for address:', address);
-            console.log('NFT Address:', process.env.NEXT_PUBLIC_WINE_BOTTLE_NFT_ADDRESS!);
             const nftsForOwner = await alchemy.nft.getNftsForOwner(address, {
                 contractAddresses: [process.env.NEXT_PUBLIC_WINE_BOTTLE_NFT_ADDRESS!],
                 orderBy: NftOrdering.TRANSFERTIME
             });
-            setNfts(nftsForOwner.ownedNfts);
+            const all_nfts = nftsForOwner.ownedNfts;
+            // check if the nfts are used or not by checking at the endpoint /check_token
+            const nfts = [];
+            for (let i = 0; i < all_nfts.length; i++){
+                const nft = all_nfts[i];
+                const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/wbc/check_token/`, 
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            token_id: nft.tokenId,
+                        }),
+                    }
+                );
+                const data = await response.json();
+                if (data.status=='error'){
+                    (nft as OwnedNft).redeemed = true;
+                    nfts.push(nft);
+                    
+                }
+                else if (data.status=='success'){
+                    (nft as OwnedNft).redeemed = false;
+                    nfts.push(nft); 
+                }
+            }
+            setNfts(nfts);
+
+            // setNfts(nftsForOwner.ownedNfts);
         } catch (error) {
             console.error('Error fetching NFTs:', error);
         } finally {
@@ -179,8 +211,6 @@ export function StepperDialog({
             return false;
         }
     };
-
-    console.log('nfts', formData);
 
     const handleContinue = async (step: number) => {
         switch (step) {
@@ -267,7 +297,7 @@ export function StepperDialog({
                         return;
                     }
                     else if (data.status=='success'){
-                        setCurrentStep(step + 1);
+                        setIsICvalid(true);
                     }
                 })
                 .catch((error) => {
@@ -276,6 +306,40 @@ export function StepperDialog({
                         variant: "destructive",
                         title: "Error",
                         description: "Failed to check Polygon address. Please try again.",
+                    });
+                });
+                if (!isICvalid) {
+                    return;
+                }
+                fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/wbc/claim/`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            wbc_account: formData.walletETH,
+                            intercellar_account: formData.walletPolygon,
+                        }),
+                    }
+                ).then((response) => {
+                    if (!response.ok) {
+                        toast({
+                            variant: "destructive",
+                            title: "Error",
+                            description: "Failed to submit request. Please try again.",
+                        });
+                    }
+                    else {
+                        setCurrentStep(step + 1);
+                    }
+                }
+                ).catch((error) => {
+                    console.error('Error:', error);
+                    toast({
+                        variant: "destructive",
+                        title: "Error",
+                        description: "Failed to submit request. Please try again.",
                     });
                 });
                 break;
