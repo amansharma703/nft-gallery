@@ -60,6 +60,7 @@ const initialFormData = {
     lastName: '',
     walletETH: '',
     walletPolygon: '',
+    signature: '',
 }
 
 export function StepperDialog({
@@ -151,6 +152,11 @@ export function StepperDialog({
             // setNfts(nftsForOwner.ownedNfts);
         } catch (error) {
             console.error('Error fetching NFTs:', error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to fetch NFTs. Please try again.",
+            });
         } finally {
             setLoading(false);
         }
@@ -258,25 +264,25 @@ export function StepperDialog({
                 setCurrentStep(step + 1);
                 break;
             case 3:
-                if (!formData.walletPolygon.trim()) {
-                    toast({
-                        variant: "destructive",
-                        title: "Polygon wallet address required",
-                        description: "Please enter your Polygon wallet address to continue.",
-                    });
-                    return;
-                }
-                if (!isValidPolygonAddress(formData.walletPolygon)) {
-                    toast({
-                        variant: "destructive",
-                        title: "Invalid Polygon address",
-                        description: "Please enter a valid Polygon wallet address.",
-                    });
-                    return;
-                }
-
-                fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/wbc/check_intercellar_address/`, 
-                    {
+                setIsContinueLoading(true);
+                try {
+                    if (!formData.walletPolygon.trim()) {
+                        toast({
+                            variant: "destructive",
+                            title: "Polygon wallet address required",
+                            description: "Please enter your Polygon wallet address to continue.",
+                        });
+                        return;
+                    }
+                    if (!isValidPolygonAddress(formData.walletPolygon)) {
+                        toast({
+                            variant: "destructive",
+                            title: "Invalid Polygon address",
+                            description: "Please enter a valid Polygon wallet address.",
+                        });
+                        return;
+                    }
+                    const icResponse = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/wbc/check_intercellar_address/`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -284,35 +290,46 @@ export function StepperDialog({
                         body: JSON.stringify({
                             address: formData.walletPolygon,
                         }),
-                    }
-                )
-                .then(async (response) => {
-                    const data = await response.json();
-                    if (data.status=='error'){
+                    });
+                    const icData = await icResponse.json();
+                    
+                    if (icData.status === 'error') {
                         toast({
                             variant: "destructive",
                             title: "Error",
-                            description: data.message,
+                            description: icData.message,
                         });
                         return;
                     }
-                    else if (data.status=='success'){
-                        setIsICvalid(true);
-                    }
-                })
-                .catch((error) => {
-                    console.error('Error:', error);
-                    toast({
-                        variant: "destructive",
-                        title: "Error",
-                        description: "Failed to check Polygon address. Please try again.",
+
+                    const nonceResponse = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/wbc/verification_get_nonce/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            wallet_address: formData.walletETH
+                        }),
                     });
-                });
-                if (!isICvalid) {
-                    return;
-                }
-                fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/wbc/claim/`,
-                    {
+                    const nonceData = await nonceResponse.json();
+
+                    if (nonceData.status === 'error') {
+                        toast({
+                            variant: "destructive",
+                            title: "Error",
+                            description: nonceData.message,
+                        });
+                        return;
+                    }
+
+                    const message = `WBC Verification: ${nonceData.nonce}`;
+                    const signature = await provider?.getSigner().signMessage(message);
+
+                    if (!signature) {
+                        throw new Error('Failed to sign message');
+                    }
+
+                    const claimResponse = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/wbc/claim/`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -320,28 +337,35 @@ export function StepperDialog({
                         body: JSON.stringify({
                             wbc_account: formData.walletETH,
                             intercellar_account: formData.walletPolygon,
+                            signature: signature,
+                            nonce: nonceData.nonce
                         }),
+                    });
+
+                    if (!claimResponse.ok) {
+                        throw new Error('Failed to submit claim');
                     }
-                ).then((response) => {
-                    if (!response.ok) {
+                    const claimResponseData = await claimResponse.json();
+                    if (claimResponseData.status === 'error') {
                         toast({
                             variant: "destructive",
                             title: "Error",
-                            description: "Failed to submit request. Please try again.",
+                            description: claimResponseData.message,
                         });
+                        return;
                     }
-                    else {
-                        setCurrentStep(step + 1);
-                    }
-                }
-                ).catch((error) => {
-                    console.error('Error:', error);
+
+                    setCurrentStep(step + 1);
+
+                } catch (error: any) {
                     toast({
                         variant: "destructive",
                         title: "Error",
-                        description: "Failed to submit request. Please try again.",
+                        description: error.message || "Failed to process request",
                     });
-                });
+                } finally {
+                    setIsContinueLoading(false);
+                }
                 break;
             default:
                 setCurrentStep(step + 1);
@@ -637,4 +661,4 @@ export function StepperDialog({
             </DialogContent>
         </Dialog >
     );
-} 
+}
