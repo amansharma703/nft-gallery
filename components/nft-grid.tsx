@@ -114,6 +114,20 @@ export function NFTGrid({ nfts, loading, isConnected }: NFTGridProps) {
               This NFT has already been redeemed to Intercellar
             </div>
           )}
+          {
+            nft.raw.metadata?.attributes?.find((attr: any) => attr.trait_type === 'reveal')?.value === 'false' && (
+              <div className='text-sm text-red-500 font-semibold text-center'>
+                This NFT has not been revealed yet and hence won't be transferred to Intercellar
+              </div>
+            )
+          }
+          {
+            nft.raw.metadata?.attributes?.find((attr: any) => attr.trait_type === 'redeem')?.value === 'true' && (
+              <div className='text-sm text-red-500 font-semibold text-center'>
+                This NFT is already redeemed and hence won't be transferred to Intercellar
+              </div>
+            )
+          }
         </div>
       ))}
     </div>
