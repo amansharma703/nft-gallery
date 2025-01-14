@@ -282,14 +282,11 @@ export function StepperDialog({
                         });
                         return;
                     }
-                    const icResponse = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/wbc/check_intercellar_address/`, {
-                        method: 'POST',
+                    const icResponse = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/wbc/check_intercellar_address/${formData.walletPolygon}`, {
+                        method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({
-                            address: formData.walletPolygon,
-                        }),
                     });
                     const icData = await icResponse.json();
                     
