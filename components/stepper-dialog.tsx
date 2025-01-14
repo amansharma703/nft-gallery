@@ -121,32 +121,31 @@ export function StepperDialog({
                 orderBy: NftOrdering.TRANSFERTIME
             });
             const all_nfts = nftsForOwner.ownedNfts;
-            // check if the nfts are used or not by checking at the endpoint /check_token
-            const nfts = [];
-            for (let i = 0; i < all_nfts.length; i++){
-                const nft = all_nfts[i];
-                const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/wbc/check_token/`, 
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            token_id: nft.tokenId,
-                        }),
-                    }
-                );
-                const data = await response.json();
-                if (data.status=='error'){
-                    (nft as OwnedNft).redeemed = true;
-                    nfts.push(nft);
-                    
+
+            // Extract token IDs
+            const tokenIds = all_nfts.map(nft => nft.tokenId);
+
+            // Check if the NFTs are used or not by checking at the endpoint /check_tokens
+            const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/wbc/check_tokens/`, 
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        token_ids: tokenIds,
+                    }),
                 }
-                else if (data.status=='success'){
-                    (nft as OwnedNft).redeemed = false;
-                    nfts.push(nft); 
-                }
-            }
+            );
+
+            const data = await response.json();
+            const tokenStatus = data.token_status;
+
+            const nfts = all_nfts.map(nft => {
+                (nft as OwnedNft).redeemed = tokenStatus[nft.tokenId] === 'claimed';
+                return nft;
+            });
+
             setNfts(nfts);
 
             // setNfts(nftsForOwner.ownedNfts);
