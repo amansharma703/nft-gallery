@@ -11,7 +11,11 @@ import {
 import { cn } from '@/lib/utils';
 import StepperIcon from './ui/icons/stepper';
 import { Button } from './ui/button';
-import { NftOrdering, OwnedNft } from 'alchemy-sdk';
+import { NftOrdering, OwnedNft as AlchemyOwnedNft } from 'alchemy-sdk';
+
+interface OwnedNft extends AlchemyOwnedNft {
+    redeemed?: boolean;
+}
 import { alchemy } from '@/lib/alchemy';
 import { ethers } from 'ethers';
 import { useToast } from "@/components/ui/use-toast";
@@ -56,6 +60,7 @@ const initialFormData = {
     lastName: '',
     walletETH: '',
     walletPolygon: '',
+    signature: '',
 }
 
 export function StepperDialog({
@@ -67,6 +72,7 @@ export function StepperDialog({
 }) {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
+    const [isICvalid, setIsICvalid] = useState(false);
     const [nfts, setNfts] = useState<OwnedNft[]>([
     ]);
 
@@ -114,9 +120,42 @@ export function StepperDialog({
                 contractAddresses: [process.env.NEXT_PUBLIC_WINE_BOTTLE_NFT_ADDRESS!],
                 orderBy: NftOrdering.TRANSFERTIME
             });
-            setNfts(nftsForOwner.ownedNfts);
+            const all_nfts = nftsForOwner.ownedNfts;
+
+            // Extract token IDs
+            const tokenIds = all_nfts.map(nft => nft.tokenId);
+
+            // Check if the NFTs are used or not by checking at the endpoint /check_tokens
+            const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/wbc/check_tokens/`, 
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        token_ids: tokenIds,
+                    }),
+                }
+            );
+
+            const data = await response.json();
+            const tokenStatus = data.token_status;
+
+            const nfts = all_nfts.map(nft => {
+                (nft as OwnedNft).redeemed = tokenStatus[nft.tokenId] === 'claimed';
+                return nft;
+            });
+
+            setNfts(nfts);
+
+            // setNfts(nftsForOwner.ownedNfts);
         } catch (error) {
             console.error('Error fetching NFTs:', error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to fetch NFTs. Please try again.",
+            });
         } finally {
             setLoading(false);
         }
@@ -171,14 +210,12 @@ export function StepperDialog({
         try {
             // Check if it's a valid Ethereum address format (Polygon uses the same format)
             const isValidFormat = ethers.utils.isAddress(address);
-            // You can add additional Polygon-specific checks here if needed
+                        // You can add additional Polygon-specific checks here if needed
             return isValidFormat;
         } catch {
             return false;
         }
     };
-
-    console.log('nfts', formData);
 
     const handleContinue = async (step: number) => {
         switch (step) {
@@ -226,23 +263,105 @@ export function StepperDialog({
                 setCurrentStep(step + 1);
                 break;
             case 3:
-                if (!formData.walletPolygon.trim()) {
+                setIsContinueLoading(true);
+                try {
+                    if (!formData.walletPolygon.trim()) {
+                        toast({
+                            variant: "destructive",
+                            title: "Polygon wallet address required",
+                            description: "Please enter your Polygon wallet address to continue.",
+                        });
+                        return;
+                    }
+                    if (!isValidPolygonAddress(formData.walletPolygon)) {
+                        toast({
+                            variant: "destructive",
+                            title: "Invalid Polygon address",
+                            description: "Please enter a valid Polygon wallet address.",
+                        });
+                        return;
+                    }
+                    const icResponse = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/wbc/check_intercellar_address/${formData.walletPolygon}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    });
+                    const icData = await icResponse.json();
+                    
+                    if (icData.status === 'error') {
+                        toast({
+                            variant: "destructive",
+                            title: "Error",
+                            description: icData.message,
+                        });
+                        return;
+                    }
+
+                    const nonceResponse = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/wbc/verification_get_nonce/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            wallet_address: formData.walletETH
+                        }),
+                    });
+                    const nonceData = await nonceResponse.json();
+
+                    if (nonceData.status === 'error') {
+                        toast({
+                            variant: "destructive",
+                            title: "Error",
+                            description: nonceData.message,
+                        });
+                        return;
+                    }
+
+                    const message = `WBC Verification: ${nonceData.nonce}`;
+                    const signature = await provider?.getSigner().signMessage(message);
+
+                    if (!signature) {
+                        throw new Error('Failed to sign message');
+                    }
+
+                    const claimResponse = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/wbc/claim/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            wbc_account: formData.walletETH,
+                            intercellar_account: formData.walletPolygon,
+                            signature: signature,
+                            nonce: nonceData.nonce
+                        }),
+                    });
+
+                    if (!claimResponse.ok) {
+                        throw new Error('Failed to submit claim');
+                    }
+                    const claimResponseData = await claimResponse.json();
+                    if (claimResponseData.status === 'error') {
+                        toast({
+                            variant: "destructive",
+                            title: "Error",
+                            description: claimResponseData.message,
+                        });
+                        return;
+                    }
+
+                    setCurrentStep(step + 1);
+
+                } catch (error: any) {
                     toast({
                         variant: "destructive",
-                        title: "Polygon wallet address required",
-                        description: "Please enter your Polygon wallet address to continue.",
+                        title: "Error",
+                        description: error.message || "Failed to process request",
                     });
-                    return;
+                } finally {
+                    setIsContinueLoading(false);
                 }
-                if (!isValidPolygonAddress(formData.walletPolygon)) {
-                    toast({
-                        variant: "destructive",
-                        title: "Invalid Polygon address",
-                        description: "Please enter a valid Polygon wallet address.",
-                    });
-                    return;
-                }
-                setCurrentStep(step + 1);
                 break;
             default:
                 setCurrentStep(step + 1);
@@ -275,7 +394,7 @@ export function StepperDialog({
         setFormData(prev => ({ ...prev, walletPolygon: address }));
         
         if (address && !isValidPolygonAddress(address)) {
-            setPolygonAddressError('Please enter a valid Polygon wallet address');
+            setPolygonAddressError('Please enter a valid Intercellar wallet address');
         } else {
             setPolygonAddressError('');
         }
@@ -538,4 +657,4 @@ export function StepperDialog({
             </DialogContent>
         </Dialog >
     );
-} 
+}
