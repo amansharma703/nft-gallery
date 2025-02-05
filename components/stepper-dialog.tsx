@@ -220,22 +220,22 @@ export function StepperDialog({
     const handleContinue = async (step: number) => {
         switch (step) {
             case 1:
-                if (!formData.firstName.trim()) {
-                    toast({
-                        variant: "destructive",
-                        title: "First name is required",
-                        description: "Please enter your first name to continue.",
-                    });
-                    return;
-                }
-                if (!formData.lastName.trim()) {
-                    toast({
-                        variant: "destructive",
-                        title: "Last name is required",
-                        description: "Please enter your last name to continue.",
-                    });
-                    return;
-                }
+                // if (!formData.firstName.trim()) {
+                //     toast({
+                //         variant: "destructive",
+                //         title: "First name is required",
+                //         description: "Please enter your first name to continue.",
+                //     });
+                //     return;
+                // }
+                // if (!formData.lastName.trim()) {
+                //     toast({
+                //         variant: "destructive",
+                //         title: "Last name is required",
+                //         description: "Please enter your last name to continue.",
+                //     });
+                //     return;
+                // }
                 if (!formData.walletETH) {
                     toast({
                         variant: "destructive",
@@ -403,7 +403,7 @@ export function StepperDialog({
     const renderStep1Content = () => (
         <div className="space-y-4 max-w-3xl mx-auto">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+                <div className='hidden'>
                     <label className="block text-sm font-medium text-dark mb-1">
                         First name
                     </label>
@@ -416,7 +416,7 @@ export function StepperDialog({
                         placeholder="Lucas"
                     />
                 </div>
-                <div>
+                <div className='hidden'>
                     <label className="block text-sm font-medium text-dark mb-1">
                         Last name
                     </label>
