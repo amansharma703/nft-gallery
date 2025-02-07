@@ -15,6 +15,7 @@ import { NftOrdering, OwnedNft as AlchemyOwnedNft } from 'alchemy-sdk';
 
 interface OwnedNft extends AlchemyOwnedNft {
     redeemed?: boolean;
+    selectedLabel?: string;
 }
 import { alchemy } from '@/lib/alchemy';
 import { ethers } from 'ethers';
@@ -73,8 +74,7 @@ export function StepperDialog({
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [isICvalid, setIsICvalid] = useState(false);
-    const [nfts, setNfts] = useState<OwnedNft[]>([
-    ]);
+    const [nfts, setNfts] = useState<OwnedNft[]>([]);
 
     const [currentStep, setCurrentStep] = useState(1);
     const [formData, setFormData] = useState(initialFormData);
@@ -84,7 +84,7 @@ export function StepperDialog({
 
     const [provider, setProvider] = useState<ethers.providers.Web3Provider | null>(null);
 
-    
+
 
     useEffect(() => {
         if (window.ethereum) {
@@ -126,7 +126,7 @@ export function StepperDialog({
             const tokenIds = all_nfts.map(nft => nft.tokenId);
 
             // Check if the NFTs are used or not by checking at the endpoint /check_tokens
-            const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/wbc/check_tokens/`, 
+            const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/wbc/check_tokens/`,
                 {
                     method: 'POST',
                     headers: {
@@ -210,11 +210,30 @@ export function StepperDialog({
         try {
             // Check if it's a valid Ethereum address format (Polygon uses the same format)
             const isValidFormat = ethers.utils.isAddress(address);
-                        // You can add additional Polygon-specific checks here if needed
+            // You can add additional Polygon-specific checks here if needed
             return isValidFormat;
         } catch {
             return false;
         }
+    };
+
+    const validateNFTLabels = () => {
+        const nftsNeedingLabels = nfts.filter(nft => {
+            const hasLabel = nft.raw.metadata?.attributes?.some((attr: any) =>
+                attr.trait_type === 'label');
+            const isRevealed = nft.raw.metadata?.attributes?.find((attr: any) =>
+                attr.trait_type === 'reveal')?.value !== 'false';
+            const isRedeemed = nft.redeemed || nft.raw.metadata?.attributes?.find((attr: any) =>
+                attr.trait_type === 'redeem')?.value === 'true';
+
+            return !hasLabel && isRevealed && !isRedeemed;
+        });
+
+        const allLabelsSelected = nftsNeedingLabels.every(nft => nft.selectedLabel);
+        return {
+            isValid: allLabelsSelected,
+            count: nftsNeedingLabels.length
+        };
     };
 
     const handleContinue = async (step: number) => {
@@ -260,6 +279,15 @@ export function StepperDialog({
                 }
                 break;
             case 2:
+                const validation = validateNFTLabels();
+                if (validation.count > 0 && !validation.isValid) {
+                    toast({
+                        variant: "destructive",
+                        title: "Missing Labels",
+                        description: "Please select a label for all eligible NFTs before continuing.",
+                    });
+                    return;
+                }
                 setCurrentStep(step + 1);
                 break;
             case 3:
@@ -288,7 +316,7 @@ export function StepperDialog({
                         },
                     });
                     const icData = await icResponse.json();
-                    
+
                     if (icData.status === 'error') {
                         toast({
                             variant: "destructive",
@@ -334,7 +362,23 @@ export function StepperDialog({
                             wbc_account: formData.walletETH,
                             intercellar_account: formData.walletPolygon,
                             signature: signature,
-                            nonce: nonceData.nonce
+                            nonce: nonceData.nonce,
+                            nft_labels: nfts
+                                .filter(nft => {
+                                    const isRevealed = nft.raw.metadata?.attributes?.find((attr: any) =>
+                                        attr.trait_type === 'reveal')?.value !== 'false';
+                                    const hasLabel = nft.raw.metadata?.attributes?.some((attr: any) =>
+                                        attr.trait_type === 'label');
+
+                                    return !nft.redeemed &&
+                                        isRevealed &&
+                                        !hasLabel &&
+                                        nft.selectedLabel;
+                                })
+                                .map(nft => ({
+                                    token_id: nft.tokenId,
+                                    label: nft.selectedLabel
+                                }))
                         }),
                     });
 
@@ -392,12 +436,22 @@ export function StepperDialog({
     const handlePolygonAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const address = e.target.value;
         setFormData(prev => ({ ...prev, walletPolygon: address }));
-        
+
         if (address && !isValidPolygonAddress(address)) {
             setPolygonAddressError('Please enter a valid Intercellar wallet address');
         } else {
             setPolygonAddressError('');
         }
+    };
+
+    const handleLabelSelect = (tokenId: string, label: string) => {
+        setNfts(currentNfts =>
+            currentNfts.map(nft =>
+                nft.tokenId === tokenId
+                    ? { ...nft, selectedLabel: label }
+                    : nft
+            )
+        );
     };
 
     const renderStep1Content = () => (
@@ -528,14 +582,15 @@ export function StepperDialog({
                     <div className="py-6 pt-0">
                         {currentStep === 1 && renderStep1Content()}
 
-                        
-                        
+
+
                         {currentStep === 2 && (
                             <div className="space-y-4 max-w-3xl mx-auto max-h-64 overflow-y-auto pr-4 custom-scrollbar">
-                                <NFTGrid 
-                                    nfts={nfts} 
-                                    loading={false} 
-                                    isConnected={!!formData.walletETH} 
+                                <NFTGrid
+                                    nfts={nfts}
+                                    loading={false}
+                                    isConnected={!!formData.walletETH}
+                                    onLabelSelect={handleLabelSelect}
                                 />
                             </div>
                         )}
@@ -556,7 +611,7 @@ export function StepperDialog({
                                             polygonAddressError ? "border-red-500" : "border-gray-300"
                                         )}
                                         placeholder="xxxx-xxxx-xxxx-xxxx"
-                                        
+
                                     />
                                     {polygonAddressError && (
                                         <p className="text-sm text-red-500 mt-1">
@@ -616,30 +671,30 @@ export function StepperDialog({
                                         </Button>
                                     )}
 
-                                        <Button  
+                                    <Button
                                         onClick={() => handleContinue(currentStep)}
                                         disabled={isContinueLoading || (currentStep === 2 && nfts.length === 0)}
                                         className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-black hover:bg-[#151518] rounded-none"
                                     >
                                         {isContinueLoading ? (
                                             <div className="flex items-center gap-2">
-                                                <svg 
-                                                    className="animate-spin h-4 w-4" 
-                                                    xmlns="http://www.w3.org/2000/svg" 
-                                                    fill="none" 
+                                                <svg
+                                                    className="animate-spin h-4 w-4"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    fill="none"
                                                     viewBox="0 0 24 24"
                                                 >
-                                                    <circle 
-                                                        className="opacity-25" 
-                                                        cx="12" 
-                                                        cy="12" 
-                                                        r="10" 
-                                                        stroke="currentColor" 
+                                                    <circle
+                                                        className="opacity-25"
+                                                        cx="12"
+                                                        cy="12"
+                                                        r="10"
+                                                        stroke="currentColor"
                                                         strokeWidth="4"
                                                     />
-                                                    <path 
-                                                        className="opacity-75" 
-                                                        fill="currentColor" 
+                                                    <path
+                                                        className="opacity-75"
+                                                        fill="currentColor"
                                                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                                                     />
                                                 </svg>
