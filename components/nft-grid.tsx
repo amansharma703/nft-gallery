@@ -13,9 +13,9 @@ interface OwnedNft extends AlchemyOwnedNft {
 }
 
 const WINE_LABELS = [
-  'Bitcoin St Emilion',
-  'Bitcoin Margaux',
-  'Bitcoin Pessac Leognan'
+  'Saint-émilion grand cru bitcoin la cuvée® 2019',
+  'Margaux bitcoin la cuvée® 2019',
+  'Pessac-léognan bitcoin la cuvée® 2019'
 ];
 
 interface NFTGridProps {

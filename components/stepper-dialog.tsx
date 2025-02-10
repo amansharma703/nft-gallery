@@ -75,6 +75,7 @@ export function StepperDialog({
     const [loading, setLoading] = useState(false);
     const [isICvalid, setIsICvalid] = useState(false);
     const [nfts, setNfts] = useState<OwnedNft[]>([]);
+    const [customLabels, setCustomLabels] = useState<any>({});
 
     const [currentStep, setCurrentStep] = useState(1);
     const [formData, setFormData] = useState(initialFormData);
@@ -363,22 +364,7 @@ export function StepperDialog({
                             intercellar_account: formData.walletPolygon,
                             signature: signature,
                             nonce: nonceData.nonce,
-                            nft_labels: nfts
-                                .filter(nft => {
-                                    const isRevealed = nft.raw.metadata?.attributes?.find((attr: any) =>
-                                        attr.trait_type === 'reveal')?.value !== 'false';
-                                    const hasLabel = nft.raw.metadata?.attributes?.some((attr: any) =>
-                                        attr.trait_type === 'label');
-
-                                    return !nft.redeemed &&
-                                        isRevealed &&
-                                        !hasLabel &&
-                                        nft.selectedLabel;
-                                })
-                                .map(nft => ({
-                                    token_id: nft.tokenId,
-                                    label: nft.selectedLabel
-                                }))
+                            customLabels: customLabels,
                         }),
                     });
 
@@ -445,13 +431,19 @@ export function StepperDialog({
     };
 
     const handleLabelSelect = (tokenId: string, label: string) => {
-        setNfts(currentNfts =>
-            currentNfts.map(nft =>
-                nft.tokenId === tokenId
-                    ? { ...nft, selectedLabel: label }
-                    : nft
-            )
-        );
+        setCustomLabels((prev: any) => ({
+            ...prev,
+            [tokenId]: label
+        }));
+        setNfts(currentNfts => currentNfts.map(nft => {
+            if (nft.tokenId === tokenId) {
+                return {
+                    ...nft,
+                    selectedLabel: label
+                };
+            }
+            return nft;
+        }));
     };
 
     const renderStep1Content = () => (
